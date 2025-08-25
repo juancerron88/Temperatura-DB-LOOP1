@@ -40,7 +40,8 @@ if (!MONGODB_URI) {
   console.error("[env] MONGODB_URI is required");
   process.exit(1);
 }
-
+console.log("[debug] PORT:", process.env.PORT);
+console.log("[debug] MONGODB_URI:", process.env.MONGODB_URI?.slice(0,60) + "...");
 connectDB(MONGODB_URI).then(() => {
   app.listen(PORT, () => {
     console.log(`[srv] Listening on :${PORT}`);

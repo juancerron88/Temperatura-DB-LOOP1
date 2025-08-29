@@ -1,3 +1,4 @@
+// src/index.js
 import "dotenv/config.js";
 import express from "express";
 import cors from "cors";
@@ -5,8 +6,9 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { connectDB } from "./db.js";
 import thermoRouter from "./routes/thermo.js";
+import relayRouter from "./routes/relay.js";
 
-const app = express();
+const app = express();                      // 👈 crear app primero
 
 // ---- Middlewares base ----
 app.use(helmet());
@@ -30,7 +32,14 @@ app.get("/health", (_req, res) => {
 });
 
 // ---- API ----
+// Si usas API key middleware, podrías hacer:
+// app.use("/api", apiKeyMiddleware, thermoRouter, relayRouter);
+
 app.use("/api/thermo", thermoRouter);
+app.use("/api/relay", relayRouter);         // 👈 ya con app creado
+
+// (Opcional) 404 para el resto
+app.use((_req, res) => res.status(404).json({ error: "not found" }));
 
 // ---- Arranque ----
 const PORT = process.env.PORT || 4000;
@@ -40,13 +49,17 @@ if (!MONGODB_URI) {
   console.error("[env] MONGODB_URI is required");
   process.exit(1);
 }
-console.log("[debug] PORT:", process.env.PORT);
-console.log("[debug] MONGODB_URI:", process.env.MONGODB_URI?.slice(0,60) + "...");
-connectDB(MONGODB_URI).then(() => {
-  app.listen(PORT, () => {
-    console.log(`[srv] Listening on :${PORT}`);
+
+console.log("[debug] PORT:", PORT);
+console.log("[debug] MONGODB_URI:", (MONGODB_URI || "").slice(0, 60) + "...");
+
+connectDB(MONGODB_URI)
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`[srv] Listening on :${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error("[db] Connection error", err);
+    process.exit(1);
   });
-}).catch(err => {
-  console.error("[db] Connection error", err);
-  process.exit(1);
-});

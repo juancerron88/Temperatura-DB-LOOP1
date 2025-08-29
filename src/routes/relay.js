@@ -4,21 +4,19 @@ import Relay from "../models/Relay.js";
 
 const router = Router();
 
-// ---- Leer estados (para la placa) ----
+// GET /api/relay/pull?deviceId=xxx  ← la placa consulta aquí
 router.get("/pull", async (req, res) => {
   const { deviceId } = req.query;
   if (!deviceId) return res.status(400).json({ error: "deviceId requerido" });
 
   let doc = await Relay.findOne({ deviceId });
   if (!doc) {
-    // si no existe, lo crea con todos OFF
-    doc = await Relay.create({ deviceId });
+    doc = await Relay.create({ deviceId }); // por defecto todos OFF
   }
-
   res.json(doc);
 });
 
-// ---- Cambiar un relé ----
+// POST /api/relay/set  { deviceId, relay:"R1", state:true, holdSec?:300 }
 router.post("/set", async (req, res) => {
   const { deviceId, relay, state, holdSec } = req.body;
   if (!deviceId || !relay) {
@@ -28,19 +26,15 @@ router.post("/set", async (req, res) => {
   const update = {};
   update[`relays.${relay}.state`] = !!state;
   update[`relays.${relay}.updatedAt`] = new Date();
-
-  if (holdSec && holdSec > 0) {
-    update[`relays.${relay}.until`] = new Date(Date.now() + holdSec * 1000);
-  } else {
-    update[`relays.${relay}.until`] = null;
-  }
+  update[`relays.${relay}.until`] = holdSec && holdSec > 0
+    ? new Date(Date.now() + holdSec * 1000)
+    : null;
 
   const doc = await Relay.findOneAndUpdate(
     { deviceId },
     { $set: update },
     { new: true, upsert: true }
   );
-
   res.json(doc);
 });
 
